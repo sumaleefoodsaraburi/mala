@@ -1,0 +1,180 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isValidDateString(val) {
+      return val is string && val.size() == 10 && val.matches('^\\d{4}-\\d{2}-\\d{2}$');
+    }
+
+    function isValidSale(data) {
+      return data.keys().hasAll([
+          'ownerId', 'date', 'note', 'cashAmount', 'krungthaiAmount', 'totalAmount', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'date', 'note', 'cashAmount', 'krungthaiAmount', 'totalAmount', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && isValidDateString(data.date)
+        && data.note is string
+        && data.note.size() <= 200
+        && (data.cashAmount is int || data.cashAmount is float)
+        && data.cashAmount >= 0
+        && data.cashAmount <= 10000000
+        && (data.krungthaiAmount is int || data.krungthaiAmount is float)
+        && data.krungthaiAmount >= 0
+        && data.krungthaiAmount <= 10000000
+        && (data.totalAmount is int || data.totalAmount is float)
+        && data.totalAmount > 0
+        && data.totalAmount <= 20000000
+        && data.totalAmount >= (data.cashAmount + data.krungthaiAmount - 0.01)
+        && data.totalAmount <= (data.cashAmount + data.krungthaiAmount + 0.01)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidPurchase(data) {
+      return data.keys().hasAll([
+          'ownerId', 'date', 'itemName', 'category', 'paymentMethod', 'amount', 'note', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'date', 'itemName', 'category', 'paymentMethod', 'amount', 'note', 'createdAt', 'updatedAt'
+        ])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && isValidDateString(data.date)
+        && data.itemName is string
+        && data.itemName.size() >= 1
+        && data.itemName.size() <= 120
+        && data.category is string
+        && data.category.size() >= 1
+        && data.category.size() <= 40
+        && data.category in ['วัตถุดิบ', 'เครื่องปรุง', 'บรรจุภัณฑ์', 'ค่าใช้จ่ายร้าน', 'อื่นๆ']
+        && data.paymentMethod is string
+        && data.paymentMethod.size() >= 4
+        && data.paymentMethod.size() <= 16
+        && data.paymentMethod in ['cash', 'krungthai']
+        && (data.amount is int || data.amount is float)
+        && data.amount > 0
+        && data.amount <= 10000000
+        && data.note is string
+        && data.note.size() <= 200
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidShopSettings(data, userId) {
+      return data.keys().hasAll([
+          'ownerId', 'shopName', 'initialCashBalance', 'initialKrungthaiBalance', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerId', 'shopName', 'initialCashBalance', 'initialKrungthaiBalance', 'updatedAt'
+        ])
+        && data.ownerId is string
+        && data.ownerId.size() >= 1
+        && data.ownerId.size() <= 128
+        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
+        && data.ownerId == request.auth.uid
+        && data.ownerId == userId
+        && data.shopName is string
+        && data.shopName.size() >= 1
+        && data.shopName.size() <= 100
+        && (data.initialCashBalance is int || data.initialCashBalance is float)
+        && data.initialCashBalance >= 0
+        && data.initialCashBalance <= 100000000
+        && (data.initialKrungthaiBalance is int || data.initialKrungthaiBalance is float)
+        && data.initialKrungthaiBalance >= 0
+        && data.initialKrungthaiBalance <= 100000000
+        && data.updatedAt is timestamp;
+    }
+
+    match /sales/{saleId} {
+      allow get: if isSignedIn() && isValidId(saleId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(saleId)
+        && isValidSale(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(saleId)
+        && existing().ownerId == request.auth.uid
+        && isValidSale(incoming())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'date', 'note', 'cashAmount', 'krungthaiAmount', 'totalAmount', 'updatedAt'
+        ]);
+      allow delete: if isSignedIn() && isValidId(saleId) && existing().ownerId == request.auth.uid;
+    }
+
+    match /purchases/{purchaseId} {
+      allow get: if isSignedIn() && isValidId(purchaseId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+      allow create: if isSignedIn()
+        && isValidId(purchaseId)
+        && isValidPurchase(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(purchaseId)
+        && existing().ownerId == request.auth.uid
+        && isValidPurchase(incoming())
+        && incoming().ownerId == existing().ownerId
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'date', 'itemName', 'category', 'paymentMethod', 'amount', 'note', 'updatedAt'
+        ]);
+      allow delete: if isSignedIn() && isValidId(purchaseId) && existing().ownerId == request.auth.uid;
+    }
+
+    match /shopSettings/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
+      allow list: if false;
+      allow create: if isSignedIn()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && isValidShopSettings(incoming(), userId)
+        && incoming().updatedAt == request.time;
+      allow update: if isSignedIn()
+        && isValidId(userId)
+        && userId == request.auth.uid
+        && existing().ownerId == request.auth.uid
+        && isValidShopSettings(incoming(), userId)
+        && incoming().ownerId == existing().ownerId
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'shopName', 'initialCashBalance', 'initialKrungthaiBalance', 'updatedAt'
+        ]);
+      allow delete: if false;
+    }
+  }
+}

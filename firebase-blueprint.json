@@ -1,0 +1,181 @@
+{
+  "entities": {
+    "Sale": {
+      "title": "Sale",
+      "description": "A sales record for ร้านหมาล่าทอด หลังเกษราษฎร์ splitting cash and Krungthai bank transfer amounts.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the shop owner who created this record.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "date": {
+          "type": "string",
+          "description": "Transaction date in YYYY-MM-DD format.",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional description or note for the sales entry.",
+          "maxLength": 200
+        },
+        "cashAmount": {
+          "type": "number",
+          "description": "Cash amount received in Thai Baht."
+        },
+        "krungthaiAmount": {
+          "type": "number",
+          "description": "Krungthai Bank transfer amount received in Thai Baht."
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total sale amount equal to cashAmount + krungthaiAmount."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the record was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the record was last updated."
+        }
+      },
+      "required": [
+        "ownerId",
+        "date",
+        "note",
+        "cashAmount",
+        "krungthaiAmount",
+        "totalAmount",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Purchase": {
+      "title": "Purchase",
+      "description": "A purchase or expense record specifying payment via cash or Krungthai Bank.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the shop owner who created this record.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "date": {
+          "type": "string",
+          "description": "Purchase date in YYYY-MM-DD format.",
+          "minLength": 10,
+          "maxLength": 10,
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "itemName": {
+          "type": "string",
+          "description": "Name of the purchased item or expense.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "category": {
+          "type": "string",
+          "description": "Expense category.",
+          "enum": ["วัตถุดิบ", "เครื่องปรุง", "บรรจุภัณฑ์", "ค่าใช้จ่ายร้าน", "อื่นๆ"],
+          "maxLength": 40
+        },
+        "paymentMethod": {
+          "type": "string",
+          "description": "Payment channel used for the purchase.",
+          "enum": ["cash", "krungthai"]
+        },
+        "amount": {
+          "type": "number",
+          "description": "Purchase amount in Thai Baht."
+        },
+        "note": {
+          "type": "string",
+          "description": "Optional note for the purchase.",
+          "maxLength": 200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the record was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the record was last updated."
+        }
+      },
+      "required": [
+        "ownerId",
+        "date",
+        "itemName",
+        "category",
+        "paymentMethod",
+        "amount",
+        "note",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "ShopSettings": {
+      "title": "ShopSettings",
+      "description": "Shop configuration and opening balances for cash and Krungthai Bank.",
+      "type": "object",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the shop owner.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "shopName": {
+          "type": "string",
+          "description": "Display name of the shop.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "initialCashBalance": {
+          "type": "number",
+          "description": "Opening cash drawer balance in Thai Baht."
+        },
+        "initialKrungthaiBalance": {
+          "type": "number",
+          "description": "Opening Krungthai Bank balance in Thai Baht."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when settings were last updated."
+        }
+      },
+      "required": [
+        "ownerId",
+        "shopName",
+        "initialCashBalance",
+        "initialKrungthaiBalance",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/sales/{saleId}": {
+      "schema": { "$ref": "#/entities/Sale" },
+      "description": "Collection storing sales entries split between cash and Krungthai Bank transfers."
+    },
+    "/purchases/{purchaseId}": {
+      "schema": { "$ref": "#/entities/Purchase" },
+      "description": "Collection storing purchase and expense entries paid via cash or Krungthai Bank."
+    },
+    "/shopSettings/{userId}": {
+      "schema": { "$ref": "#/entities/ShopSettings" },
+      "description": "Per-user shop configuration and opening cash/bank balances."
+    }
+  }
+}
