@@ -18,8 +18,8 @@ service cloud.firestore {
       return resource.data;
     }
 
-    function isSignedIn() {
-      return request.auth != null && request.auth.token.email_verified == true;
+    function isValidOwnerId(val) {
+      return isValidId(val);
     }
 
     function isValidDateString(val) {
@@ -33,11 +33,7 @@ service cloud.firestore {
         && data.keys().hasOnly([
           'ownerId', 'date', 'note', 'cashAmount', 'krungthaiAmount', 'totalAmount', 'createdAt', 'updatedAt'
         ])
-        && data.ownerId is string
-        && data.ownerId.size() >= 1
-        && data.ownerId.size() <= 128
-        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
-        && data.ownerId == request.auth.uid
+        && isValidOwnerId(data.ownerId)
         && isValidDateString(data.date)
         && data.note is string
         && data.note.size() <= 200
@@ -63,11 +59,7 @@ service cloud.firestore {
         && data.keys().hasOnly([
           'ownerId', 'date', 'itemName', 'category', 'paymentMethod', 'amount', 'note', 'createdAt', 'updatedAt'
         ])
-        && data.ownerId is string
-        && data.ownerId.size() >= 1
-        && data.ownerId.size() <= 128
-        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
-        && data.ownerId == request.auth.uid
+        && isValidOwnerId(data.ownerId)
         && isValidDateString(data.date)
         && data.itemName is string
         && data.itemName.size() >= 1
@@ -89,19 +81,15 @@ service cloud.firestore {
         && data.updatedAt is timestamp;
     }
 
-    function isValidShopSettings(data, userId) {
+    function isValidShopSettings(data, shopId) {
       return data.keys().hasAll([
           'ownerId', 'shopName', 'initialCashBalance', 'initialKrungthaiBalance', 'updatedAt'
         ])
         && data.keys().hasOnly([
           'ownerId', 'shopName', 'initialCashBalance', 'initialKrungthaiBalance', 'updatedAt'
         ])
-        && data.ownerId is string
-        && data.ownerId.size() >= 1
-        && data.ownerId.size() <= 128
-        && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$')
-        && data.ownerId == request.auth.uid
-        && data.ownerId == userId
+        && isValidOwnerId(data.ownerId)
+        && data.ownerId == shopId
         && data.shopName is string
         && data.shopName.size() >= 1
         && data.shopName.size() <= 100
@@ -115,16 +103,15 @@ service cloud.firestore {
     }
 
     match /sales/{saleId} {
-      allow get: if isSignedIn() && isValidId(saleId) && existing().ownerId == request.auth.uid;
-      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
-      allow create: if isSignedIn()
-        && isValidId(saleId)
+      allow get: if isValidId(saleId) && isValidOwnerId(existing().ownerId);
+      allow list: if isValidOwnerId(existing().ownerId);
+      allow create: if isValidId(saleId)
         && isValidSale(incoming())
+        && incoming().ownerId == 'kasemrad-mala'
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
-      allow update: if isSignedIn()
-        && isValidId(saleId)
-        && existing().ownerId == request.auth.uid
+      allow update: if isValidId(saleId)
+        && isValidOwnerId(existing().ownerId)
         && isValidSale(incoming())
         && incoming().ownerId == existing().ownerId
         && incoming().createdAt == existing().createdAt
@@ -132,20 +119,19 @@ service cloud.firestore {
         && incoming().diff(existing()).affectedKeys().hasOnly([
           'date', 'note', 'cashAmount', 'krungthaiAmount', 'totalAmount', 'updatedAt'
         ]);
-      allow delete: if isSignedIn() && isValidId(saleId) && existing().ownerId == request.auth.uid;
+      allow delete: if isValidId(saleId) && isValidOwnerId(existing().ownerId);
     }
 
     match /purchases/{purchaseId} {
-      allow get: if isSignedIn() && isValidId(purchaseId) && existing().ownerId == request.auth.uid;
-      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
-      allow create: if isSignedIn()
-        && isValidId(purchaseId)
+      allow get: if isValidId(purchaseId) && isValidOwnerId(existing().ownerId);
+      allow list: if isValidOwnerId(existing().ownerId);
+      allow create: if isValidId(purchaseId)
         && isValidPurchase(incoming())
+        && incoming().ownerId == 'kasemrad-mala'
         && incoming().createdAt == request.time
         && incoming().updatedAt == request.time;
-      allow update: if isSignedIn()
-        && isValidId(purchaseId)
-        && existing().ownerId == request.auth.uid
+      allow update: if isValidId(purchaseId)
+        && isValidOwnerId(existing().ownerId)
         && isValidPurchase(incoming())
         && incoming().ownerId == existing().ownerId
         && incoming().createdAt == existing().createdAt
@@ -153,22 +139,19 @@ service cloud.firestore {
         && incoming().diff(existing()).affectedKeys().hasOnly([
           'date', 'itemName', 'category', 'paymentMethod', 'amount', 'note', 'updatedAt'
         ]);
-      allow delete: if isSignedIn() && isValidId(purchaseId) && existing().ownerId == request.auth.uid;
+      allow delete: if isValidId(purchaseId) && isValidOwnerId(existing().ownerId);
     }
 
-    match /shopSettings/{userId} {
-      allow get: if isSignedIn() && isValidId(userId) && userId == request.auth.uid;
-      allow list: if false;
-      allow create: if isSignedIn()
-        && isValidId(userId)
-        && userId == request.auth.uid
-        && isValidShopSettings(incoming(), userId)
+    match /shopSettings/{shopId} {
+      allow get: if isValidId(shopId) && isValidOwnerId(existing().ownerId);
+      allow list: if isValidOwnerId(existing().ownerId);
+      allow create: if isValidId(shopId)
+        && shopId == 'kasemrad-mala'
+        && isValidShopSettings(incoming(), shopId)
         && incoming().updatedAt == request.time;
-      allow update: if isSignedIn()
-        && isValidId(userId)
-        && userId == request.auth.uid
-        && existing().ownerId == request.auth.uid
-        && isValidShopSettings(incoming(), userId)
+      allow update: if isValidId(shopId)
+        && isValidOwnerId(existing().ownerId)
+        && isValidShopSettings(incoming(), shopId)
         && incoming().ownerId == existing().ownerId
         && incoming().updatedAt == request.time
         && incoming().diff(existing()).affectedKeys().hasOnly([

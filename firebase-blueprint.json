@@ -7,7 +7,7 @@
       "properties": {
         "ownerId": {
           "type": "string",
-          "description": "Firebase Auth UID of the shop owner who created this record.",
+          "description": "Shop identifier for the store ledger.",
           "maxLength": 128,
           "pattern": "^[a-zA-Z0-9_\\-]+$"
         },
@@ -64,7 +64,7 @@
       "properties": {
         "ownerId": {
           "type": "string",
-          "description": "Firebase Auth UID of the shop owner who created this record.",
+          "description": "Shop identifier for the store ledger.",
           "maxLength": 128,
           "pattern": "^[a-zA-Z0-9_\\-]+$"
         },
@@ -131,7 +131,7 @@
       "properties": {
         "ownerId": {
           "type": "string",
-          "description": "Firebase Auth UID of the shop owner.",
+          "description": "Shop identifier for the store ledger.",
           "maxLength": 128,
           "pattern": "^[a-zA-Z0-9_\\-]+$"
         },
@@ -173,9 +173,9 @@
       "schema": { "$ref": "#/entities/Purchase" },
       "description": "Collection storing purchase and expense entries paid via cash or Krungthai Bank."
     },
-    "/shopSettings/{userId}": {
+    "/shopSettings/{shopId}": {
       "schema": { "$ref": "#/entities/ShopSettings" },
-      "description": "Per-user shop configuration and opening cash/bank balances."
+      "description": "Shop configuration and opening cash/bank balances."
     }
   }
 }

@@ -31,7 +31,6 @@ export type EditingTarget =
   | null;
 
 interface EntryWorkbenchProps {
-  uid: string;
   editingTarget: EditingTarget;
   onCancelEdit: () => void;
 }
@@ -55,7 +54,6 @@ const PURCHASE_QUICK_ITEMS: { label: string; category: PurchaseCategory }[] = [
 ];
 
 export function EntryWorkbench({
-  uid,
   editingTarget,
   onCancelEdit,
 }: EntryWorkbenchProps) {
@@ -166,7 +164,7 @@ export function EntryWorkbench({
         resetSaleForm();
         showToast('อัปเดตรายการขายเรียบร้อยแล้ว');
       } else {
-        await createSale(uid, payload);
+        await createSale(payload);
         resetSaleForm();
         showToast('บันทึกรายการขายเรียบร้อยแล้ว');
       }
@@ -210,7 +208,7 @@ export function EntryWorkbench({
         resetPurchaseForm();
         showToast('อัปเดตรายการซื้อของเรียบร้อยแล้ว');
       } else {
-        await createPurchase(uid, payload);
+        await createPurchase(payload);
         resetPurchaseForm();
         showToast('บันทึกรายการซื้อของเรียบร้อยแล้ว');
       }

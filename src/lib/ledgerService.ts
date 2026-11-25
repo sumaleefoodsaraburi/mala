@@ -8,7 +8,6 @@ import {
   serverTimestamp,
   setDoc,
   updateDoc,
-  where,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from './firebase';
@@ -24,6 +23,8 @@ import {
   type SaleRecord,
   type ShopSettings,
 } from '../types/ledger';
+
+export const SHOP_ID = 'kasemrad-mala';
 
 export interface SaleInput {
   date: string;
@@ -62,14 +63,10 @@ function validateDateStr(date: string): string {
 }
 
 export function subscribeToSales(
-  uid: string,
   onData: (sales: SaleRecord[]) => void
 ): Unsubscribe {
   const path = 'sales';
-  const q = query(
-    collection(db, path),
-    where('ownerId', '==', uid)
-  );
+  const q = query(collection(db, path));
 
   return onSnapshot(
     q,
@@ -105,14 +102,10 @@ export function subscribeToSales(
 }
 
 export function subscribeToPurchases(
-  uid: string,
   onData: (purchases: PurchaseRecord[]) => void
 ): Unsubscribe {
   const path = 'purchases';
-  const q = query(
-    collection(db, path),
-    where('ownerId', '==', uid)
-  );
+  const q = query(collection(db, path));
 
   return onSnapshot(
     q,
@@ -153,20 +146,30 @@ export function subscribeToPurchases(
 }
 
 export function subscribeToShopSettings(
-  uid: string,
   onData: (settings: ShopSettings | null) => void
 ): Unsubscribe {
-  const path = `shopSettings/${uid}`;
+  const path = 'shopSettings';
+  const q = query(collection(db, path));
   return onSnapshot(
-    doc(db, 'shopSettings', uid),
+    q,
     (snapshot) => {
-      if (!snapshot.exists()) {
+      if (snapshot.empty) {
         onData(null);
         return;
       }
-      const data = snapshot.data();
+      const primaryDoc =
+        snapshot.docs.find((d) => d.id === SHOP_ID) ??
+        snapshot.docs
+          .slice()
+          .sort((a, b) => {
+            const aMs = a.data().updatedAt?.toMillis?.() ?? 0;
+            const bMs = b.data().updatedAt?.toMillis?.() ?? 0;
+            return bMs - aMs;
+          })[0];
+
+      const data = primaryDoc.data();
       onData({
-        ownerId: String(data.ownerId ?? uid),
+        ownerId: String(data.ownerId ?? primaryDoc.id),
         shopName: String(data.shopName ?? 'ร้านหมาล่าทอด หลังเกษราษฎร์'),
         initialCashBalance: Number(data.initialCashBalance ?? 0),
         initialKrungthaiBalance: Number(data.initialKrungthaiBalance ?? 0),
@@ -174,12 +177,12 @@ export function subscribeToShopSettings(
       });
     },
     (error) => {
-      handleFirestoreError(error, OperationType.GET, path);
+      handleFirestoreError(error, OperationType.LIST, path);
     }
   );
 }
 
-export async function createSale(uid: string, input: SaleInput): Promise<void> {
+export async function createSale(input: SaleInput): Promise<void> {
   const date = validateDateStr(input.date);
   const cashAmount = sanitizeNumber(input.cashAmount, MAX_AMOUNT_VALUE);
   const krungthaiAmount = sanitizeNumber(input.krungthaiAmount, MAX_AMOUNT_VALUE);
@@ -192,7 +195,7 @@ export async function createSale(uid: string, input: SaleInput): Promise<void> {
   const path = 'sales';
   try {
     await addDoc(collection(db, path), {
-      ownerId: uid,
+      ownerId: SHOP_ID,
       date,
       note,
       cashAmount,
@@ -243,10 +246,7 @@ export async function deleteSale(saleId: string): Promise<void> {
   }
 }
 
-export async function createPurchase(
-  uid: string,
-  input: PurchaseInput
-): Promise<void> {
+export async function createPurchase(input: PurchaseInput): Promise<void> {
   const date = validateDateStr(input.date);
   const itemName = input.itemName.trim().slice(0, MAX_ITEM_NAME_LENGTH);
   if (!itemName) {
@@ -266,7 +266,7 @@ export async function createPurchase(
   const path = 'purchases';
   try {
     await addDoc(collection(db, path), {
-      ownerId: uid,
+      ownerId: SHOP_ID,
       date,
       itemName,
       category,
@@ -326,10 +326,7 @@ export async function deletePurchase(purchaseId: string): Promise<void> {
   }
 }
 
-export async function saveShopSettings(
-  uid: string,
-  input: ShopSettingsInput
-): Promise<void> {
+export async function saveShopSettings(input: ShopSettingsInput): Promise<void> {
   const shopName =
     input.shopName.trim().slice(0, MAX_SHOP_NAME_LENGTH) ||
     'ร้านหมาล่าทอด หลังเกษราษฎร์';
@@ -342,10 +339,10 @@ export async function saveShopSettings(
     100_000_000
   );
 
-  const path = `shopSettings/${uid}`;
+  const path = `shopSettings/${SHOP_ID}`;
   try {
-    await setDoc(doc(db, 'shopSettings', uid), {
-      ownerId: uid,
+    await setDoc(doc(db, 'shopSettings', SHOP_ID), {
+      ownerId: SHOP_ID,
       shopName,
       initialCashBalance,
       initialKrungthaiBalance,

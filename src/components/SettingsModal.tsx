@@ -5,14 +5,12 @@ import { MAX_SHOP_NAME_LENGTH, type ShopSettings } from '../types/ledger';
 
 interface SettingsModalProps {
   isOpen: boolean;
-  uid: string;
   settings: ShopSettings | null;
   onClose: () => void;
 }
 
 export function SettingsModal({
   isOpen,
-  uid,
   settings,
   onClose,
 }: SettingsModalProps) {
@@ -37,7 +35,7 @@ export function SettingsModal({
     setError(null);
     setIsSaving(true);
     try {
-      await saveShopSettings(uid, {
+      await saveShopSettings({
         shopName: shopName.trim() || 'ร้านหมาล่าทอด หลังเกษราษฎร์',
         initialCashBalance: Math.max(0, Number(initialCash) || 0),
         initialKrungthaiBalance: Math.max(0, Number(initialKrungthai) || 0),
