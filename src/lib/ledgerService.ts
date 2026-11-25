@@ -63,7 +63,8 @@ function validateDateStr(date: string): string {
 }
 
 export function subscribeToSales(
-  onData: (sales: SaleRecord[]) => void
+  onData: (sales: SaleRecord[]) => void,
+  onError?: (error: Error) => void
 ): Unsubscribe {
   const path = 'sales';
   const q = query(collection(db, path));
@@ -96,13 +97,22 @@ export function subscribeToSales(
       onData(items);
     },
     (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      try {
+        handleFirestoreError(error, OperationType.LIST, path);
+      } catch (wrapped) {
+        if (onError) {
+          onError(wrapped instanceof Error ? wrapped : new Error(String(wrapped)));
+        } else {
+          throw wrapped;
+        }
+      }
     }
   );
 }
 
 export function subscribeToPurchases(
-  onData: (purchases: PurchaseRecord[]) => void
+  onData: (purchases: PurchaseRecord[]) => void,
+  onError?: (error: Error) => void
 ): Unsubscribe {
   const path = 'purchases';
   const q = query(collection(db, path));
@@ -140,13 +150,22 @@ export function subscribeToPurchases(
       onData(items);
     },
     (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      try {
+        handleFirestoreError(error, OperationType.LIST, path);
+      } catch (wrapped) {
+        if (onError) {
+          onError(wrapped instanceof Error ? wrapped : new Error(String(wrapped)));
+        } else {
+          throw wrapped;
+        }
+      }
     }
   );
 }
 
 export function subscribeToShopSettings(
-  onData: (settings: ShopSettings | null) => void
+  onData: (settings: ShopSettings | null) => void,
+  onError?: (error: Error) => void
 ): Unsubscribe {
   const path = 'shopSettings';
   const q = query(collection(db, path));
@@ -177,7 +196,15 @@ export function subscribeToShopSettings(
       });
     },
     (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      try {
+        handleFirestoreError(error, OperationType.LIST, path);
+      } catch (wrapped) {
+        if (onError) {
+          onError(wrapped instanceof Error ? wrapped : new Error(String(wrapped)));
+        } else {
+          throw wrapped;
+        }
+      }
     }
   );
 }

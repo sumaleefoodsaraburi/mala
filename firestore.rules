@@ -104,7 +104,7 @@ service cloud.firestore {
 
     match /sales/{saleId} {
       allow get: if isValidId(saleId) && isValidOwnerId(existing().ownerId);
-      allow list: if isValidOwnerId(existing().ownerId);
+      allow list: if request.time != null;
       allow create: if isValidId(saleId)
         && isValidSale(incoming())
         && incoming().ownerId == 'kasemrad-mala'
@@ -124,7 +124,7 @@ service cloud.firestore {
 
     match /purchases/{purchaseId} {
       allow get: if isValidId(purchaseId) && isValidOwnerId(existing().ownerId);
-      allow list: if isValidOwnerId(existing().ownerId);
+      allow list: if request.time != null;
       allow create: if isValidId(purchaseId)
         && isValidPurchase(incoming())
         && incoming().ownerId == 'kasemrad-mala'
@@ -144,7 +144,7 @@ service cloud.firestore {
 
     match /shopSettings/{shopId} {
       allow get: if isValidId(shopId) && isValidOwnerId(existing().ownerId);
-      allow list: if isValidOwnerId(existing().ownerId);
+      allow list: if request.time != null;
       allow create: if isValidId(shopId)
         && shopId == 'kasemrad-mala'
         && isValidShopSettings(incoming(), shopId)

@@ -4,12 +4,14 @@
  */
 
 import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, RotateCcw } from 'lucide-react';
 import { EntryWorkbench, type EditingTarget } from './components/EntryWorkbench';
 import { LedgerTable } from './components/LedgerTable';
 import { ProfitLossOverview } from './components/ProfitLossOverview';
 import { SettingsModal } from './components/SettingsModal';
 import { TopBar } from './components/TopBar';
 import {
+  extractErrorMessage,
   getDaysAgoISO,
   getMonthStartISO,
   getTodayISO,
@@ -31,8 +33,9 @@ export default function App() {
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [settings, setSettings] = useState<ShopSettings | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
+  const [dbError, setDbError] = useState<string | null>(null);
 
-  const [preset, setPreset] = useState<DateRangePreset>('month');
+  const [preset, setPreset] = useState<DateRangePreset>('all');
   const [customStart, setCustomStart] = useState<string>(getMonthStartISO());
   const [customEnd, setCustomEnd] = useState<string>(getTodayISO());
 
@@ -41,6 +44,7 @@ export default function App() {
 
   useEffect(() => {
     setDataLoading(true);
+    setDbError(null);
     let salesLoaded = false;
     let purchasesLoaded = false;
 
@@ -50,21 +54,33 @@ export default function App() {
       }
     };
 
+    const handleSubError = (err: Error) => {
+      setDataLoading(false);
+      setDbError(
+        extractErrorMessage(
+          err,
+          'ไม่สามารถเชื่อมต่อฐานข้อมูล Firebase ได้ในขณะนี้'
+        )
+      );
+    };
+
     const unsubSales = subscribeToSales((rows) => {
       setSales(rows);
       salesLoaded = true;
+      setDbError(null);
       markLoadedIfReady();
-    });
+    }, handleSubError);
 
     const unsubPurchases = subscribeToPurchases((rows) => {
       setPurchases(rows);
       purchasesLoaded = true;
+      setDbError(null);
       markLoadedIfReady();
-    });
+    }, handleSubError);
 
     const unsubSettings = subscribeToShopSettings((cfg) => {
       setSettings(cfg);
-    });
+    }, handleSubError);
 
     return () => {
       unsubSales();
@@ -93,6 +109,15 @@ export default function App() {
     }
   }, [preset, customStart, customEnd]);
 
+  const handleSavedDate = (savedDate: string) => {
+    const outOfRange =
+      (dateBounds.start && savedDate < dateBounds.start) ||
+      (dateBounds.end && savedDate > dateBounds.end);
+    if (outOfRange) {
+      setPreset('all');
+    }
+  };
+
   const filteredSales = useMemo(() => {
     return sales.filter((s) => {
       if (dateBounds.start && s.date < dateBounds.start) return false;
@@ -120,6 +145,26 @@ export default function App() {
       />
 
       <main className="flex-1 max-w-[1360px] w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-8">
+        {dbError && (
+          <div
+            role="alert"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-900"
+          >
+            <div className="flex items-start gap-2.5">
+              <AlertTriangle className="w-5 h-5 text-red-700 shrink-0 mt-0.5" />
+              <span>{dbError}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-xs font-semibold text-white bg-red-700 hover:bg-red-800 rounded-lg transition-colors whitespace-nowrap shrink-0 cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>โหลดข้อมูลใหม่</span>
+            </button>
+          </div>
+        )}
+
         <ProfitLossOverview
           sales={filteredSales}
           purchases={filteredPurchases}
@@ -141,6 +186,7 @@ export default function App() {
             <EntryWorkbench
               editingTarget={editingTarget}
               onCancelEdit={() => setEditingTarget(null)}
+              onSavedDate={handleSavedDate}
             />
           </div>
 

@@ -8,7 +8,7 @@ import {
   Store,
   X,
 } from 'lucide-react';
-import { formatBaht, getTodayISO } from '../lib/format';
+import { extractErrorMessage, formatBaht, getTodayISO } from '../lib/format';
 import {
   createPurchase,
   createSale,
@@ -33,6 +33,7 @@ export type EditingTarget =
 interface EntryWorkbenchProps {
   editingTarget: EditingTarget;
   onCancelEdit: () => void;
+  onSavedDate?: (date: string) => void;
 }
 
 const SALE_QUICK_NOTES = [
@@ -56,6 +57,7 @@ const PURCHASE_QUICK_ITEMS: { label: string; category: PurchaseCategory }[] = [
 export function EntryWorkbench({
   editingTarget,
   onCancelEdit,
+  onSavedDate,
 }: EntryWorkbenchProps) {
   const [activeTab, setActiveTab] = useState<'sale' | 'purchase'>('sale');
 
@@ -162,15 +164,17 @@ export function EntryWorkbench({
         await updateSale(editingTarget.record.id, payload);
         onCancelEdit();
         resetSaleForm();
+        onSavedDate?.(payload.date);
         showToast('อัปเดตรายการขายเรียบร้อยแล้ว');
       } else {
         await createSale(payload);
         resetSaleForm();
+        onSavedDate?.(payload.date);
         showToast('บันทึกรายการขายเรียบร้อยแล้ว');
       }
     } catch (err) {
       setFormError(
-        err instanceof Error ? err.message : 'ไม่สามารถบันทึกรายการขายได้'
+        extractErrorMessage(err, 'ไม่สามารถบันทึกรายการขายได้')
       );
     } finally {
       setIsSubmitting(false);
@@ -206,15 +210,17 @@ export function EntryWorkbench({
         await updatePurchase(editingTarget.record.id, payload);
         onCancelEdit();
         resetPurchaseForm();
+        onSavedDate?.(payload.date);
         showToast('อัปเดตรายการซื้อของเรียบร้อยแล้ว');
       } else {
         await createPurchase(payload);
         resetPurchaseForm();
+        onSavedDate?.(payload.date);
         showToast('บันทึกรายการซื้อของเรียบร้อยแล้ว');
       }
     } catch (err) {
       setFormError(
-        err instanceof Error ? err.message : 'ไม่สามารถบันทึกรายการซื้อของได้'
+        extractErrorMessage(err, 'ไม่สามารถบันทึกรายการซื้อของได้')
       );
     } finally {
       setIsSubmitting(false);

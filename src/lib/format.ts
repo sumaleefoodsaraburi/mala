@@ -132,3 +132,18 @@ export function exportLedgerCSV(entries: UnifiedLedgerEntry[], filenamePrefix: s
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
 }
+
+export function extractErrorMessage(err: unknown, fallback: string): string {
+  if (!(err instanceof Error)) return fallback;
+  const msg = err.message;
+  try {
+    const parsed = JSON.parse(msg) as { error?: string };
+    if (parsed && typeof parsed.error === 'string' && parsed.error.length > 0) {
+      return `${fallback} (${parsed.error})`;
+    }
+  } catch {
+    // Plain error message
+  }
+  return msg || fallback;
+}
+

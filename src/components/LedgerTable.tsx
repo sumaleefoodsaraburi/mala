@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import {
   exportLedgerCSV,
+  extractErrorMessage,
   formatBaht,
   formatSignedBaht,
   formatThaiDate,
@@ -119,7 +120,7 @@ export function LedgerTable({
       setConfirmDeleteKey(null);
     } catch (err) {
       setActionError(
-        err instanceof Error ? err.message : 'ไม่สามารถลบรายการได้'
+        extractErrorMessage(err, 'ไม่สามารถลบรายการได้')
       );
     } finally {
       setDeletingKey(null);
